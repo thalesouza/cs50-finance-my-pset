@@ -120,7 +120,18 @@ def quote():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    return apology("TODO")
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirmation = request.form.get("confirmation")
+        if not username:
+            return apology("Missing username", 400)
+        if not password:
+            return apology("Missing password", 400)
+        if confirmation != password:
+            return apology("Password doesn't match", 400)
+    else:
+        return render_template("register.html")
 
 
 @app.route("/sell", methods=["GET", "POST"])
