@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+    <form action="/quote" method="post">
+        <p>Type stock's symbol</p>
+        <input type="text" name="symbol" id="symbol" placeholder="NFLX" autocomplete="off">
+        <button class="btn btn-success">Search</button>
+    </form>
+{% endblock %}

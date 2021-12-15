@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+    <div id="container-stock">
+        <h2>{{ stocks.name }} </h2>
+        <h1>${{ stocks.price }} </h1>
+        <h3>{{ stocks.symbol }} </h3>
+    </div>
+{% endblock %}
