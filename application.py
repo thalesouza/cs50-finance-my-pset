@@ -1,9 +1,12 @@
 import os
 
 from cs50 import SQL
+from datetime import datetime
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from tempfile import mkdtemp
+from time import time
+from sqlalchemy.sql.expression import null
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -46,14 +49,43 @@ if not os.environ.get("API_KEY"):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    return apology("TODO")
+    rows = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
+    purchases = db.execute("SELECT user_id, stock_symbol, stocks_bought, price_bought, cash, timestamp FROM users JOIN purchases ON users.id = purchases.user_id")
+
+    return render_template("index.html", purchases=purchases)
 
 
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+    rows = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
+    stock_symbol = request.form.get("symbol")
+
+    if request.method == "POST":
+        if not request.form.get("symbol"):
+            return apology("Missing stock symbol")
+        if not request.form.get("shares"):
+            return apology("Missing shares's amount")
+
+        read = lookup(stock_symbol)
+        stock_price = read['price']
+        stock_name = read['name']
+        user_cash = rows[0]["cash"]
+        n_shares = int(request.form.get("shares"))
+
+        if (n_shares * stock_price) > user_cash:
+            return apology("Can't afford.")
+        else:
+            update_cash = user_cash - (n_shares * stock_price)
+            time_bought = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+            db.execute("INSERT INTO purchases (user_id, stock_symbol, stock_name, stocks_bought, price_bought, timestamp) VALUES(?, ?, ?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, n_shares, stock_price, time_bought)
+            db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash,session["user_id"])
+            flash("Bought.")
+            return redirect("/")
+
+
+    return render_template("buy.html")
 
 
 @app.route("/history")
@@ -117,10 +149,15 @@ def quote():
     stock_symbol = request.form.get("symbol")
     
     if request.method == "POST":
+
         if stock_symbol == "":
             return apology("Missing stocks's symbol")
-
+        
         stocks = lookup(stock_symbol)
+
+        if stocks == None:
+            return apology("Symbol not found", 404)
+
         return render_template("quoted.html", stocks=stocks)
 
     return render_template("quote.html")
@@ -145,7 +182,7 @@ def register():
             return apology("Someone is using this username", 400)
 
         db.execute("INSERT INTO users (username, hash) VALUES(?, ?)", username, pw)
-
+        flash("Registered.")
         return redirect("/login")
     else:
         return render_template("register.html")
