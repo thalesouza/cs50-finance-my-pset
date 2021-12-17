@@ -49,10 +49,32 @@ if not os.environ.get("API_KEY"):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    rows = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
-    purchases = db.execute("SELECT user_id, stock_symbol, stocks_bought, price_bought, cash, timestamp FROM users JOIN purchases ON users.id = purchases.user_id")
+    # Remember logged user
+    user_id = session["user_id"]
 
-    return render_template("index.html", purchases=purchases)
+    # List to get TOTAL value
+    sum_total = []
+
+    stocks = db.execute("SELECT symbol, shares, name, price_bought FROM portifolio WHERE user_id = ?", user_id)
+
+    for stock in stocks:
+        shares = stock['shares']
+        symbol = stock['symbol']
+        name = stock['name']
+        price = stock['price_bought']
+        total = shares * price
+        stock['name'] = name
+        stock['price'] = price
+        stock['total'] = total
+        sum_total.append(total)
+
+     # rows = db.execute("SELECT user_id, stock_symbol, stock_name, stocks_bought, price_bought, cash, timestamp, purchase_id FROM users JOIN purchases ON users.id = purchases.user_id WHERE user_id = ?", session["user_id"])
+   
+    av_cash = db.execute("SELECT cash FROM users WHERE id = ?", user_id)
+    cash = sum(sum_total)
+    cash_total = av_cash[0]['cash'] + cash
+
+    return render_template("index.html", stocks=stocks, av_cash=av_cash, cash_total=cash_total)
 
 
 @app.route("/buy", methods=["GET", "POST"])
@@ -81,7 +103,7 @@ def buy():
             time_bought = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
             db.execute("INSERT INTO purchases (user_id, stock_symbol, stock_name, stocks_bought, price_bought, timestamp) VALUES(?, ?, ?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, n_shares, stock_price, time_bought)
             db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash,session["user_id"])
-            flash("Bought.")
+            flash("Bought!")
             return redirect("/")
 
 
@@ -182,8 +204,13 @@ def register():
             return apology("Someone is using this username", 400)
 
         db.execute("INSERT INTO users (username, hash) VALUES(?, ?)", username, pw)
-        flash("Registered.")
-        return redirect("/login")
+
+        # Start session
+        rows = db.execute("SELECT * FROM users WHERE username = ?", username)
+
+        session['user_id'] = rows[0]['id']
+        flash(f"Registered, welcome {username.upper()} !", username)
+        return redirect("/")
     else:
         return render_template("register.html")
 
