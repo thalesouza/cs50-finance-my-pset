@@ -6,8 +6,6 @@
 
 {% block main %}
     <div id="container-stock">
-        <h2>{{ stocks.name }} </h2>
-        <h1>${{ stocks.price }} </h1>
-        <h3>{{ stocks.symbol }} </h3>
+        <p>A stock from <b>{{ stocks.name }}</b> ({{ stocks.symbol }}) costs {{ stocks.price | usd}}</p>
     </div>
 {% endblock %}

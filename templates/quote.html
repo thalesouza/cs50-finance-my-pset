@@ -6,8 +6,9 @@
 
 {% block main %}
     <form action="/quote" method="post">
-        <p>Type stock's symbol</p>
-        <input type="text" name="symbol" id="symbol" placeholder="NFLX" autocomplete="off">
-        <button class="btn btn-success">Search</button>
+        <div class="mb-3">
+            <input type="text" name="symbol" id="symbol" placeholder="Symbol" autocomplete="off">
+        </div>
+        <button class="btn btn-primary">Search</button>
     </form>
 {% endblock %}
