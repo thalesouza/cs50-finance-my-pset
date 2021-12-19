@@ -20,8 +20,8 @@
                 <tr>
                     <td class="text-start">{{ stock.symbol }}</td>
                     <td class="text-start">{{ stock.name }}</td>
-                    <td class="text-end">{{ stock.shares }}</td>
-                    <td class="text-end">{{ stock.price_bought | usd }}</td>
+                    <td class="text-end">{{ stock['sum(shares)'] }}</td>
+                    <td class="text-end">{{ stock.price | usd }}</td>
                     <td class="text-end">{{ stock.total | usd }}</td>
                 </tr>
             {% endfor %}

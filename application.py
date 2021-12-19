@@ -55,15 +55,17 @@ def index():
     # List to get TOTAL value
     sum_total = []
 
-    stocks = db.execute("SELECT symbol, shares, name, price_bought FROM portifolio WHERE user_id = ?", user_id)
+    stocks = db.execute("SELECT symbol, sum(shares), name, price FROM history WHERE user_id = ? GROUP BY symbol ORDER BY symbol", user_id)
 
     for stock in stocks:
-        shares = stock['shares']
+        shares = stock['sum(shares)']
         symbol = stock['symbol']
         name = stock['name']
-        price = stock['price_bought']
+        price = stock['price']
         total = shares * price
         stock['name'] = name
+        stock['symbol'] = symbol
+        stock['sum(shares)'] = shares
         stock['price'] = price
         stock['total'] = total
         sum_total.append(total)
@@ -101,9 +103,18 @@ def buy():
         else:
             update_cash = user_cash - (n_shares * stock_price)
             time_bought = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-            db.execute("INSERT INTO purchases (user_id, stock_symbol, stock_name, stocks_bought, price_bought, timestamp) VALUES(?, ?, ?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, n_shares, stock_price, time_bought)
-            db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash,session["user_id"])
+
+            # add to history
+            db.execute("INSERT INTO history (user_id, operation, symbol, name, price, shares, timestamp) VALUES(?, 'BUY', ?, ?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, stock_price, n_shares, time_bought)
+            
+            # add to portifolio
+            # db.execute("INSERT INTO portifolio (user_id, symbol, name, shares) VALUES(?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, n_shares)
+            
+            # Update cash
+            db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash, session["user_id"])
+            
             flash("Bought!")
+            
             return redirect("/")
 
 
