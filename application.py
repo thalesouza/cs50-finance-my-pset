@@ -61,7 +61,7 @@ def index():
         shares = stock['sum(shares)']
         symbol = stock['symbol']
         name = stock['name']
-        price = stock['price']
+        price = lookup(symbol)['price']
         total = shares * price
         stock['name'] = name
         stock['symbol'] = symbol
