@@ -6,7 +6,7 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from tempfile import mkdtemp
 from time import time
-from sqlalchemy.sql.expression import null
+from sqlalchemy.sql.expression import null, update
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -55,7 +55,7 @@ def index():
     # List to get TOTAL value
     sum_total = []
 
-    stocks = db.execute("SELECT symbol, sum(shares), name, price FROM history WHERE user_id = ? GROUP BY symbol ORDER BY symbol", user_id)
+    stocks = db.execute("SELECT symbol, sum(shares), name, price FROM history WHERE user_id = ? GROUP BY symbol HAVING sum(shares) > 0 ORDER BY symbol", user_id)
 
     for stock in stocks:
         shares = stock['sum(shares)']
@@ -113,7 +113,7 @@ def buy():
             # Update cash
             db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash, session["user_id"])
             
-            flash("Bought!")
+            flash(f"Bought {read['symbol']} at ${stock_price:.2f}")
             
             return redirect("/")
 
@@ -230,7 +230,48 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    return apology("TODO")
+    symbols = db.execute("SELECT symbol, sum(shares) FROM history WHERE user_id = ? GROUP BY symbol", session['user_id'])
+    user = db.execute("SELECT * FROM users WHERE id = ?", session['user_id'])
+
+    # for shares in symbols:
+    #     symbol = shares['symbol']
+    #     share = shares['sum(shares)']
+
+    if request.method == "POST":
+        symbol = request.form.get("symbol")
+        shares = request.form.get("shares")
+        SYMBOLS = []
+
+        for row in symbols:
+            SYMBOLS.append(row['symbol'])
+
+        if symbol not in SYMBOLS:
+            return apology("You don't have this stock.")
+        if not shares:
+            return apology("I can't figure how many shares want.")
+        stock_shares = db.execute("SELECT sum(shares) FROM history WHERE symbol = ? AND user_id = ?", symbol, session['user_id'])
+        if int(shares) > stock_shares[0]['sum(shares)']:
+            return apology("You don't have this amount.")
+
+        read = lookup(symbol)
+        stock_name = read['name']
+        price = read['price']
+        sell_amount = price * float(shares)
+        update_cash = user[0]['cash'] + float(sell_amount)
+        update_share = -abs(int(shares))
+        time_operation = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+        # Insert into history table the sell operation
+        db.execute("INSERT INTO history (user_id, operation, symbol, name, price, shares, timestamp) VALUES (?, 'SELL', ?, ?, ?, ?, ?)", session['user_id'], symbol, stock_name, price, update_share, time_operation)
+
+        # Updates user cash after sell.
+        db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash, session['user_id'])
+
+        flash(f"Sold {symbol} at ${price:.2f}")
+        SYMBOLS.clear()
+        return redirect("/")
+
+    return render_template("sell.html", symbols=symbols)
 
 
 def errorhandler(e):
