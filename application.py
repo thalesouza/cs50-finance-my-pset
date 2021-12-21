@@ -6,7 +6,6 @@ from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from tempfile import mkdtemp
 from time import time
-from sqlalchemy.sql.expression import null, update
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -84,19 +83,27 @@ def index():
 def buy():
     """Buy shares of stock"""
     rows = db.execute("SELECT * FROM users WHERE id = ?", session["user_id"])
-    stock_symbol = request.form.get("symbol")
+    stock_symbol = str(request.form.get("symbol"))
 
     if request.method == "POST":
         if not request.form.get("symbol"):
             return apology("Missing stock symbol")
         if not request.form.get("shares"):
             return apology("Missing shares's amount")
+        if not request.form.get("shares").isdigit():
+            return apology("Not valid share")
 
         read = lookup(stock_symbol)
+        
+        if read == None:
+            return apology("Invalid symbol")
+
         stock_price = read['price']
         stock_name = read['name']
         user_cash = rows[0]["cash"]
         n_shares = int(request.form.get("shares"))
+
+
 
         if (n_shares * stock_price) > user_cash:
             return apology("Can't afford.")
@@ -106,14 +113,11 @@ def buy():
 
             # add to history
             db.execute("INSERT INTO history (user_id, operation, symbol, name, price, shares, timestamp) VALUES(?, 'BUY', ?, ?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, stock_price, n_shares, time_bought)
-            
-            # add to portifolio
-            # db.execute("INSERT INTO portifolio (user_id, symbol, name, shares) VALUES(?, ?, ?, ?)", session["user_id"], stock_symbol.upper(), stock_name, n_shares)
-            
+                        
             # Update cash
             db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash, session["user_id"])
             
-            flash(f"Bought {read['symbol']} at ${stock_price:.2f}")
+            flash(f"Bought {n_shares}x {read['symbol']} at ${stock_price:.2f}")
             
             return redirect("/")
 
@@ -193,7 +197,7 @@ def quote():
         stocks = lookup(stock_symbol)
 
         if stocks == None:
-            return apology("Symbol not found", 404)
+            return apology("Symbol not found")
 
         return render_template("quoted.html", stocks=stocks)
 
@@ -271,7 +275,7 @@ def sell():
         # Updates user cash after sell.
         db.execute("UPDATE users SET cash = ? WHERE id = ?", update_cash, session['user_id'])
 
-        flash(f"Sold {symbol} at ${price:.2f}")
+        flash(f"Sold {shares}x {symbol} at ${price:.2f}")
         SYMBOLS.clear()
         return redirect("/")
 

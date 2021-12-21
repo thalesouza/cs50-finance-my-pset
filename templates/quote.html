@@ -7,8 +7,8 @@
 {% block main %}
     <form action="/quote" method="post">
         <div class="mb-3">
-            <input type="text" name="symbol" id="symbol" placeholder="Symbol" autocomplete="off">
+            <input class="form-control mx-auto w-auto" type="text" name="symbol" id="symbol" placeholder="Symbol" autocomplete="off" autofocus>
         </div>
-        <button class="btn btn-primary">Search</button>
+        <button class="btn btn-primary" type="submit">Search</button>
     </form>
 {% endblock %}
